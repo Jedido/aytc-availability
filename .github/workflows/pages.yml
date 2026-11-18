@@ -1,12 +1,15 @@
 name: Publish availability
 
 on:
-  # Daily at 9:10 AM Seattle time. Cron is UTC, so both offsets are listed
-  # and the "gate" job skips the one that doesn't match the current season.
+  # Daily at 9:10 AM and 3:00 PM Seattle time. Cron is UTC, so each time is
+  # listed for both offsets and the "gate" job skips the ones that don't match
+  # the current season; keep its lists in sync with these lines.
   # (GitHub may start scheduled runs late.)
   schedule:
-    - cron: "10 17 * * *" # 9:10 PST (winter)
-    - cron: "10 16 * * *" # 9:10 PDT (summer)
+    - cron: "10 17 * * *" # 9:10 AM PST (winter)
+    - cron: "10 16 * * *" # 9:10 AM PDT (summer)
+    - cron: "0 23 * * *" # 3:00 PM PST (winter)
+    - cron: "0 22 * * *" # 3:00 PM PDT (summer)
   workflow_dispatch: # manual "Run workflow" button
 
 permissions:
@@ -36,8 +39,12 @@ jobs:
           zone=$(date +%Z) # PST or PDT (TZ is America/Los_Angeles)
           run=true
           if [ "$EVENT" = "schedule" ]; then
-            if [ "$zone" = "PST" ] && [ "$SCHEDULE" != "10 17 * * *" ]; then run=false; fi
-            if [ "$zone" = "PDT" ] && [ "$SCHEDULE" != "10 16 * * *" ]; then run=false; fi
+            case "$SCHEDULE" in
+              "10 17 * * *"|"0 23 * * *") season=PST ;;
+              "10 16 * * *"|"0 22 * * *") season=PDT ;;
+              *) season=unknown ;;
+            esac
+            [ "$zone" = "$season" ] || run=false
           fi
           echo "zone=$zone schedule='$SCHEDULE' run=$run"
           echo "run=$run" >> "$GITHUB_OUTPUT"
