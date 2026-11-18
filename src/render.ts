@@ -19,6 +19,9 @@ export interface AvailabilityJson {
   errors: { resourceId: number; court: string; message: string }[];
 }
 
+// Identifies a slot across runs, for spotting new openings.
+export const openingKey = (o: Opening) => `${o.date} ${o.start}-${o.end} #${o.resourceId}`;
+
 export function toJson(report: AvailabilityReport, generatedAt: Date): AvailabilityJson {
   const openings = report.days.flatMap((day) =>
     day.open.map(({ resourceId, slot }) => ({
@@ -44,10 +47,10 @@ const escapeHtml = (s: string | number) =>
 const pacific = (d: Date, opts: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", ...opts }).format(d);
 
-function dayHeading(date: string): string {
+export function dayHeading(date: string, weekday: "long" | "short" = "long"): string {
   const [y, m, d] = date.split("-").map(Number);
   // Noon UTC keeps the calendar date stable in any time zone.
-  return pacific(new Date(Date.UTC(y, m - 1, d, 12)), { weekday: "long", month: "short", day: "numeric" });
+  return pacific(new Date(Date.UTC(y, m - 1, d, 12)), { weekday, month: "short", day: "numeric" });
 }
 
 export function renderHtml(report: AvailabilityReport, generatedAt: Date): string {
