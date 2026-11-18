@@ -3,9 +3,14 @@ import type { AvailabilityResponse, DailyDetail } from "./types.ts";
 const BASE_URL =
   "https://anc.apm.activecommunities.com/seattle/rest/reservation/resource/availability/daily";
 
-// The court's public booking page (the user picks the date/slot there).
+const SITE = "https://anc.apm.activecommunities.com/seattle";
+
+// Sign-in page that returns to the court's booking page afterwards (the user
+// picks the date/slot there). `params` is just the Base64-encoded return URL.
 export function bookingUrl(resourceId: number): string {
-  return `https://anc.apm.activecommunities.com/seattle/reservation/search/detail/${resourceId}`;
+  const returnUrl = `${SITE}/reservation/search/detail/${resourceId}?fromLoginPage=true&from_original_cui=true`;
+  const params = Buffer.from(returnUrl).toString("base64");
+  return `${SITE}/signin?onlineSiteId=0&from_original_cui=true&override_partial_error=False&custom_amount=False&params=${encodeURIComponent(params)}`;
 }
 
 export interface AvailabilityQuery {
