@@ -5,7 +5,7 @@ const BASE_URL =
 
 // The court's public booking page (the user picks the date/slot there).
 export function bookingUrl(resourceId: number): string {
-  return `https://anc.apm.activecommunities.com/seattle/reservation/landing/search/detail/${resourceId}?locale=en-US`;
+  return `https://anc.apm.activecommunities.com/seattle/reservation/search/detail/${resourceId}`;
 }
 
 export interface AvailabilityQuery {
