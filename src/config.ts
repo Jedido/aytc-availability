@@ -17,8 +17,10 @@ export const RESOURCE_IDS = Object.keys(RESOURCES).map(Number);
 export const EVENT_TYPE_ID = 157;
 export const ATTENDEES = 2;
 
-// Reservations open up to this many days after today.
+// Reservations open up to this many days after today. The newest day opens at
+// BOOKING_OPENS_AT (Seattle time); before then, only DAYS_AHEAD - 1 days are bookable.
 export const DAYS_AHEAD = 6;
+export const BOOKING_OPENS_AT = "09:10";
 
 // A time window, in 24h "HH:MM". A slot matches only if it lies entirely
 // inside a window (a 20:45-22:00 slot does NOT match a 17:00-21:00 window).

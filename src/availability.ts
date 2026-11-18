@@ -1,6 +1,7 @@
 import { fetchAvailability } from "./api.ts";
 import {
   ATTENDEES,
+  BOOKING_OPENS_AT,
   DAYS_AHEAD,
   EVENT_TYPE_ID,
   RESOURCE_IDS,
@@ -52,11 +53,19 @@ function inWindows(slot: TimeSlot, windows: TimeWindow[]): boolean {
   return windows.some((w) => start >= w.start && end <= w.end);
 }
 
+// "HH:MM" of a local time, for comparing against BOOKING_OPENS_AT.
+const clock = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+// Last date that can be booked right now: the newest day isn't open until BOOKING_OPENS_AT.
+export function lastBookableDate(now: Date): string {
+  const end = new Date(now);
+  end.setDate(now.getDate() + DAYS_AHEAD - (clock(now) < BOOKING_OPENS_AT ? 1 : 0));
+  return isoDate(end);
+}
+
 export async function getAvailability(today = new Date()): Promise<AvailabilityReport> {
-  const end = new Date(today);
-  end.setDate(today.getDate() + DAYS_AHEAD);
   const startDate = isoDate(today);
-  const endDate = isoDate(end);
+  const endDate = lastBookableDate(today);
 
   const results = await Promise.allSettled(
     RESOURCE_IDS.map((resourceId) =>
