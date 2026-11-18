@@ -4,7 +4,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { getAvailability } from "./availability.ts";
 import { RESOURCE_IDS } from "./config.ts";
 import { formatNotification, newSlots, uniqueSlots } from "./notify.ts";
-import { renderHtml, toJson, type AvailabilityJson } from "./render.ts";
+import { collectAvailability, renderHtml, toJson, type AvailabilityJson } from "./render.ts";
 
 const OUT_DIR = "dist";
 const NOTIFICATION_FILE = "notification.json"; // outside dist/ so it's never published
@@ -35,23 +35,30 @@ if (report.errors.length === RESOURCE_IDS.length) {
   process.exit(1);
 }
 
-const json = toJson(report, generatedAt);
+// The previous run supplies when each opening was first seen (for "new" on the page) and
+// which time slots were already open (for notifications).
 const previous = await loadPrevious(process.env.PREVIOUS_JSON);
+const availability = collectAvailability(report, generatedAt, previous);
+const json = toJson(availability);
 
 await mkdir(OUT_DIR, { recursive: true });
-await writeFile(`${OUT_DIR}/index.html`, renderHtml(report, generatedAt));
-await writeFile(`${OUT_DIR}/availability.json`, JSON.stringify(json, null, 2) + "\n");
+await writeFile(`${OUT_DIR}/index.html`, renderHtml(report, availability));
+// Compact: only the next run reads it.
+await writeFile(`${OUT_DIR}/availability.json`, JSON.stringify(json));
 
 await rm(NOTIFICATION_FILE, { force: true });
 if (previous) {
-  const fresh = newSlots(previous.openings, json.openings);
+  // Only slots inside the time windows count for notifications. Comparing against all of
+  // the previous run's openings means a slot that was already open doesn't notify again.
+  const watched = availability.openings.filter((o) => o.watched);
+  const fresh = newSlots(previous.openings, watched);
   if (fresh.length) {
-    const total = uniqueSlots(json.openings).length;
+    const total = uniqueSlots(watched).length;
     await writeFile(NOTIFICATION_FILE, JSON.stringify(formatNotification(fresh, total), null, 2) + "\n");
   }
-  console.log(`${fresh.length} newly open time slots since ${previous.generatedAt}.`);
+  console.log(`${fresh.length} newly open watched time slots since ${previous.generatedAt}.`);
 }
 
 const first = report.days[0]?.date;
 const last = report.days.at(-1)?.date;
-console.log(`Wrote ${OUT_DIR}/ with ${json.count} openings (${first} to ${last}).`);
+console.log(`Wrote ${OUT_DIR}/ with ${json.openings.length} openings (${first} to ${last}).`);

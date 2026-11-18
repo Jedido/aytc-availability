@@ -16,13 +16,14 @@ const WEEKDAYS: Weekday[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 export interface OpenSlot {
   resourceId: number;
   slot: TimeSlot;
+  watched: boolean; // inside the day's time windows, so the notifier cares about it
 }
 
 export interface DayAvailability {
   date: string; // "YYYY-MM-DD"
   weekday: Weekday;
   windows: TimeWindow[];
-  open: OpenSlot[]; // available slots inside the day's windows, sorted by time
+  open: OpenSlot[]; // all available slots, sorted by time
 }
 
 export interface AvailabilityReport {
@@ -90,7 +91,7 @@ export async function getAvailability(today = new Date()): Promise<AvailabilityR
       const day = days.get(detail.date);
       if (!day) continue;
       for (const slot of detail.times) {
-        if (slot.available && inWindows(slot, day.windows)) day.open.push({ resourceId, slot });
+        if (slot.available) day.open.push({ resourceId, slot, watched: inWindows(slot, day.windows) });
       }
     }
   });

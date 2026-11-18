@@ -1,6 +1,6 @@
 // Works out which time slots are newly open since the last run and phrases the push notification.
 // Courts don't matter here: a slot counts as open if any court has it.
-import { dayHeading, slotKey, type Opening } from "./render.ts";
+import { dayHeading, slotKey, type Opening, type StoredOpening } from "./render.ts";
 
 const MAX_LINES = 6;
 
@@ -12,7 +12,7 @@ export function uniqueSlots(openings: Opening[]): Opening[] {
 }
 
 // Time slots open now that had no open court in the previous run.
-export function newSlots(prev: Opening[], curr: Opening[]): Opening[] {
+export function newSlots(prev: StoredOpening[], curr: Opening[]): Opening[] {
   const seen = new Set(prev.map(slotKey));
   return uniqueSlots(curr).filter((o) => !seen.has(slotKey(o)));
 }

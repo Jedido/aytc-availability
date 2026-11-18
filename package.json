@@ -6,7 +6,8 @@
     "start": "node src/index.ts",
     "dev": "node --watch src/index.ts",
     "typecheck": "tsc",
-    "build": "node src/build.ts"
+    "build": "node src/build.ts",
+    "build:mock": "node scripts/mock-build.ts"
   },
   "keywords": [],
   "author": "",

@@ -10,7 +10,7 @@ export interface TimeSlot {
 
 export interface DailyDetail {
   date: string; // "YYYY-MM-DD"
-  status: number;
+  status: number; // seen live: 0 = has openings, 4 = nothing open, 7 = today (nothing open)
   times: TimeSlot[];
   holiday_desc: string | null;
   check_in_only: boolean;

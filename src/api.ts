@@ -1,4 +1,9 @@
+import { readFile } from "node:fs/promises";
 import type { AvailabilityResponse, DailyDetail } from "./types.ts";
+
+// MOCK_API=<dir> reads canned responses from <dir>/<resourceId>.json instead of calling the
+// live API (see scripts/mock-build.ts).
+const MOCK_DIR = process.env.MOCK_API;
 
 const BASE_URL =
   "https://anc.apm.activecommunities.com/seattle/rest/reservation/resource/availability/daily";
@@ -26,12 +31,16 @@ export async function fetchAvailability(q: AvailabilityQuery): Promise<DailyDeta
     attendee: String(q.attendees),
   });
 
-  const res = await fetch(`${BASE_URL}/${q.resourceId}?${params}`, {
-    headers: { Accept: "application/json" },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-
-  const data = (await res.json()) as AvailabilityResponse;
+  let data: AvailabilityResponse;
+  if (MOCK_DIR) {
+    data = JSON.parse(await readFile(`${MOCK_DIR}/${q.resourceId}.json`, "utf8"));
+  } else {
+    const res = await fetch(`${BASE_URL}/${q.resourceId}?${params}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    data = (await res.json()) as AvailabilityResponse;
+  }
   if (data.headers.response_code !== "0000") {
     throw new Error(`API error ${data.headers.response_code}: ${data.headers.response_message}`);
   }
