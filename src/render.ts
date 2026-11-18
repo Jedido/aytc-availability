@@ -99,12 +99,14 @@ export function dayHeading(date: string, weekday: "long" | "short" = "long"): st
   return pacific(new Date(Date.UTC(y, m - 1, d, 12)), { weekday, month: "short", day: "numeric" });
 }
 
-// "16:15" -> "4:15p" (grid labels) or "4:15 PM"
-function clock(time: string, style: "short" | "long" = "long"): string {
+// "16:15" -> "4:15 PM"
+function clock(time: string): string {
   const [h, m] = time.split(":").map(Number);
-  const hm = `${h % 12 || 12}:${String(m).padStart(2, "0")}`;
-  return style === "short" ? `${hm}${h < 12 ? "a" : "p"}` : `${hm} ${h < 12 ? "AM" : "PM"}`;
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
+
+// "07:30" -> "7:30", "16:15" -> "16:15": 24-hour grid labels, which keep the time column narrow.
+const clock24 = (time: string) => time.replace(/^0/, "");
 
 // "16:15", "17:30" -> "4:15–5:30 PM"; "11:15", "12:30" -> "11:15 AM–12:30 PM"
 function clockRange(start: string, end: string): string {
@@ -120,9 +122,6 @@ function fixedLength(openings: Opening[]): number | null {
   const lengths = new Set(openings.map((o) => minutes(o.end) - minutes(o.start)));
   return lengths.size === 1 ? [...lengths][0] : null;
 }
-
-// 75 -> "1h 15m"
-const duration = (min: number) => [Math.floor(min / 60) && `${Math.floor(min / 60)}h`, min % 60 && `${min % 60}m`].filter(Boolean).join(" ");
 
 // Openings bucketed by day and exact start time, for the grid. The two court groups run
 // staggered schedules, so each start time gets its own row.
@@ -147,7 +146,6 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
   const updated = pacific(new Date(data.generatedAt), { dateStyle: "medium", timeStyle: "short" });
   const fresh = (o: Opening) => isNew(o, data.generatedAt);
   const times = new Set(data.openings.map(slotKey)).size;
-  const watchedTimes = new Set(data.openings.filter((o) => o.watched).map(slotKey)).size;
   const newTimes = new Set(data.openings.filter(fresh).map(slotKey)).size;
 
   // With one fixed slot length, a start time says it all; otherwise show the range.
@@ -159,7 +157,7 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
     courts
       .map(
         (c) =>
-          `<a class="book" href="${escapeHtml(c.url)}" data-resource-id="${c.resourceId}" data-new="${fresh(c)}">${escapeHtml(c.court)}${fresh(c) ? ` <em>new</em>` : ""}<span>Reserve ›</span></a>`,
+          `<a class="book" href="${escapeHtml(c.url)}" target="_blank" rel="noopener" data-resource-id="${c.resourceId}" data-new="${fresh(c)}">${escapeHtml(c.court)}${fresh(c) ? ` <em>new</em>` : ""}<span>Reserve ›</span></a>`,
       )
       .join("\n    ");
 
@@ -175,7 +173,7 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
     .join("");
   const sheets: string[] = [];
   const gridRows = starts
-    .map((start, i) => {
+    .map((start) => {
       const row = report.days.map((day) => {
         const slots = cells.get(cellKey(day.date, start));
         if (!slots) return `<span class="cell empty"></span>`;
@@ -184,32 +182,25 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
         const id = `slot-${day.date}-${start.replace(":", "")}`;
         const cls = ["cell", `heat${heatLevel(courts)}`, slots.some(fresh) && "new"].filter(Boolean).join(" ");
         const label = `${dayHeading(day.date)}, ${timeText(o)}: ${plural(courts, "court")} open`;
-        const meta = [`${plural(courts, "court")} open`, o.watched && "watched"].filter(Boolean).join(" · ");
         // The sheet always shows the full range, since that's where you decide to book.
         sheets.push(`
   <div class="sheet" id="${id}" popover>
     <div class="sheet-head"><h2>${escapeHtml(dayHeading(day.date))} · ${clockRange(o.start, o.end)}</h2><button type="button" class="close" popovertarget="${id}" popovertargetaction="hide" aria-label="Close">✕</button></div>
-    <p class="meta">${meta}</p>
     ${courtLinks(slots)}
   </div>`);
         return `<button type="button" class="${cls}" popovertarget="${id}" data-date="${day.date}" data-start="${start}" data-count="${courts}" aria-label="${escapeHtml(label)}">${courts}</button>`;
       });
-      // The first start time in each hour gets a darker label, to help the eye scan.
-      const newHour = start.slice(0, 2) !== starts[i - 1]?.slice(0, 2);
-      return `<div class="hour${newHour ? " first" : ""}">${clock(start, "short")}</div>${row.join("")}`;
+      return `<div class="hour">${clock24(start)}</div>${row.join("")}`;
     })
     .join("\n    ");
   const grid = starts.length
     ? `
-  <div id="grid" style="grid-template-columns: 3rem repeat(${report.days.length}, minmax(0, 1fr))">
+  <div id="grid" style="grid-template-columns: auto repeat(${report.days.length}, minmax(0, 1fr))">
     <div></div>${dayHead}
     ${gridRows}
-  </div>
-  <p class="legend">Number = courts open at that time${length ? ` · slots are ${duration(length)}` : ""} · <span class="key-dot"></span> new this hour</p>${sheets.join("")}`
+  </div>${sheets.join("")}`
     : `<p class="none">No openings this week.</p>`;
 
-  // The summary line only counts errors; the details go at the bottom.
-  const errorNote = data.errors.length ? ` · <a class="key-error" href="#errors">${plural(data.errors.length, "error")}</a>` : "";
   const errors = data.errors.length
     ? `
   <ul id="errors">${data.errors
@@ -225,46 +216,45 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AYTC Court Availability</title>
   <style>
-    :root { color-scheme: light dark; --fg: #1a1a1a; --muted: #666; --line: #ddd; --bg: #fff; --link: #0b62c4; --watch-bg: #eaf2fc; --new: #1e9e4a; --error: #c0392b; --heat-1: #dbe9fa; --heat-2: #9cc4f1; --heat-3: #2f7fd8; }
-    @media (prefers-color-scheme: dark) { :root { --fg: #eee; --muted: #9a9a9a; --line: #333; --bg: #141414; --link: #6aa9ff; --watch-bg: #1a2636; --new: #3ccf6e; --error: #ff6b5b; --heat-1: #1c2c42; --heat-2: #24497a; --heat-3: #2f74c8; } }
+    :root { color-scheme: light dark; --fg: #1a1a1a; --muted: #666; --line: #ddd; --bg: #fff; --link: #0b62c4; --new: #1e9e4a; --error: #c0392b; --heat-1: #dbe9fa; --heat-2: #9cc4f1; --heat-3: #2f7fd8; }
+    @media (prefers-color-scheme: dark) { :root { --fg: #eee; --muted: #9a9a9a; --line: #333; --bg: #141414; --link: #6aa9ff; --new: #3ccf6e; --error: #ff6b5b; --heat-1: #1c2c42; --heat-2: #24497a; --heat-3: #2f74c8; } }
     body { margin: 0 auto; max-width: 640px; padding: 16px; font: 16px/1.45 system-ui, sans-serif; color: var(--fg); background: var(--bg); }
-    h1 { font-size: 1.4rem; margin: 0 0 4px; }
+    footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+    footer h1 { font-size: .85rem; font-weight: 600; color: var(--fg); letter-spacing: .02em; margin: 0 0 2px; }
     .none, #summary { color: var(--muted); font-weight: normal; font-size: .9rem; }
     a { color: var(--link); }
-    .key-watched { background: var(--watch-bg); font-weight: 600; padding: 0 4px; border-radius: 3px; color: var(--fg); }
     .key-new { border-left: 3px solid var(--new); padding-left: 4px; color: var(--fg); }
-    .key-error { color: var(--error); font-weight: 600; white-space: nowrap; }
-    #errors { color: var(--error); font-size: .85rem; margin-top: 32px; padding-left: 20px; }
-    #grid { display: grid; gap: 3px; margin-top: 16px; }
+    #summary { margin: 0; }
+    #errors { color: var(--error); font-size: .85rem; margin-top: 12px; padding-left: 20px; }
+    #grid { display: grid; gap: 3px; }
     .dayhead { text-align: center; font-size: .8rem; color: var(--muted); line-height: 1.2; padding-bottom: 4px; }
     .dayhead span { display: block; font-size: 1.05rem; font-weight: 600; color: var(--fg); }
-    .hour { font-size: .75rem; color: var(--muted); text-align: right; padding-right: 6px; align-self: center; white-space: nowrap; }
-    .hour.first { color: var(--fg); }
-    .cell { position: relative; min-height: 36px; min-width: 0; border-radius: 6px; border: 0; padding: 0; font: inherit; font-size: .95rem; color: var(--fg); }
+    .hour { font-size: .7rem; color: var(--muted); text-align: right; padding-right: 4px; align-self: center; white-space: nowrap; }
+    @media (max-width: 480px) { body { padding: 12px 10px; } }
+    .cell { position: relative; min-height: 32px; min-width: 0; border-radius: 6px; border: 0; padding: 0; font: inherit; font-size: .95rem; color: var(--fg); }
     .cell.empty { background: transparent; border: 1px solid var(--line); opacity: .5; }
     button.cell { cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .heat1 { background: var(--heat-1); }
     .heat2 { background: var(--heat-2); }
     .heat3 { background: var(--heat-3); color: #fff; }
     .cell.new::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--new); }
-    .legend { color: var(--muted); font-size: .8rem; margin: 8px 0 0; }
-    .key-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--new); }
     /* Bottom sheet: pinned to the bottom edge, full width up to the page width. */
     .sheet { position: fixed; inset: auto 0 0 0; margin: 0 auto; width: 100%; max-width: 640px; height: auto; max-height: 80vh; overflow-y: auto; box-sizing: border-box; border: 0; border-radius: 16px 16px 0 0; padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); background: var(--bg); color: var(--fg); box-shadow: 0 -6px 30px rgba(0, 0, 0, .3); }
     .sheet::backdrop { background: rgba(0, 0, 0, .4); }
-    .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
     .sheet h2 { font-size: 1.1rem; margin: 0; }
     .close { border: 0; background: transparent; color: var(--muted); font-size: 1.2rem; min-width: 44px; min-height: 44px; margin-right: -12px; cursor: pointer; }
-    .meta { color: var(--muted); font-size: .85rem; margin: 0 0 8px; }
     .book { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; color: var(--fg); font-weight: 600; text-decoration: none; }
     .book span { margin-left: auto; color: var(--link); font-weight: 500; }
     .book em { font-style: normal; font-size: .75rem; font-weight: 600; color: var(--new); }
   </style>
 </head>
 <body>
-  <h1>AYTC Court Availability</h1>
-  <p id="summary" data-count="${data.openings.length}" data-generated-at="${data.generatedAt}">${times} open time${times === 1 ? "" : "s"} · <span class="key-watched">${watchedTimes} watched</span> · <span class="key-new">${newTimes} new this hour</span>${errorNote} · updated ${escapeHtml(updated)}</p>
-  ${grid}${errors}
+  ${grid}
+  <footer>
+    <h1>AYTC Court Availability</h1>
+    <p id="summary" data-count="${data.openings.length}" data-generated-at="${data.generatedAt}">${times} open time${times === 1 ? "" : "s"} · <span class="key-new">${newTimes} new this hour</span> · updated ${escapeHtml(updated)}</p>${errors}
+  </footer>
 </body>
 </html>
 `;
