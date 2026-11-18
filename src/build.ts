@@ -3,7 +3,7 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { getAvailability } from "./availability.ts";
 import { RESOURCE_IDS } from "./config.ts";
-import { formatNotification, newOpenings } from "./notify.ts";
+import { formatNotification, newSlots, uniqueSlots } from "./notify.ts";
 import { renderHtml, toJson, type AvailabilityJson } from "./render.ts";
 
 const OUT_DIR = "dist";
@@ -44,11 +44,12 @@ await writeFile(`${OUT_DIR}/availability.json`, JSON.stringify(json, null, 2) + 
 
 await rm(NOTIFICATION_FILE, { force: true });
 if (previous) {
-  const fresh = newOpenings(previous.openings, json.openings);
+  const fresh = newSlots(previous.openings, json.openings);
   if (fresh.length) {
-    await writeFile(NOTIFICATION_FILE, JSON.stringify(formatNotification(fresh, json.count), null, 2) + "\n");
+    const total = uniqueSlots(json.openings).length;
+    await writeFile(NOTIFICATION_FILE, JSON.stringify(formatNotification(fresh, total), null, 2) + "\n");
   }
-  console.log(`${fresh.length} new openings since ${previous.generatedAt}.`);
+  console.log(`${fresh.length} newly open time slots since ${previous.generatedAt}.`);
 }
 
 const first = report.days[0]?.date;

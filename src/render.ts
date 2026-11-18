@@ -19,8 +19,8 @@ export interface AvailabilityJson {
   errors: { resourceId: number; court: string; message: string }[];
 }
 
-// Identifies a slot across runs, for spotting new openings.
-export const openingKey = (o: Opening) => `${o.date} ${o.start}-${o.end} #${o.resourceId}`;
+// Identifies a time slot regardless of court, for spotting new openings.
+export const slotKey = (o: Opening) => `${o.date} ${o.start}-${o.end}`;
 
 export function toJson(report: AvailabilityReport, generatedAt: Date): AvailabilityJson {
   const openings = report.days.flatMap((day) =>
