@@ -63,3 +63,11 @@ jobs:
           path: dist
       - id: deploy
         uses: actions/deploy-pages@v4
+      - name: Notify phone
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          PAGE_URL: ${{ steps.deploy.outputs.page_url }}
+        run: |
+          if [ -z "$NTFY_TOPIC" ]; then echo "NTFY_TOPIC not set; skipping"; exit 0; fi
+          curl -sS -H "Title: AYTC availability updated" -H "Click: $PAGE_URL" \
+            -d "Published $(date '+%a %b %-d, %-I:%M %p')" "https://ntfy.sh/$NTFY_TOPIC"

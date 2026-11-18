@@ -1,4 +1,4 @@
-// Generates the static site in dist/: index.html and availability.json.
+// Generates the static site in dist/index.html.
 import { mkdir, writeFile } from "node:fs/promises";
 import { getAvailability } from "./availability.ts";
 import { RESOURCE_IDS } from "./config.ts";
@@ -19,7 +19,6 @@ if (report.errors.length === RESOURCE_IDS.length) {
 const json = toJson(report, generatedAt);
 await mkdir(OUT_DIR, { recursive: true });
 await writeFile(`${OUT_DIR}/index.html`, renderHtml(report, generatedAt));
-await writeFile(`${OUT_DIR}/availability.json`, JSON.stringify(json, null, 2) + "\n");
 
 const first = report.days[0]?.date;
 const last = report.days.at(-1)?.date;
