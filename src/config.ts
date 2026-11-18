@@ -1,0 +1,52 @@
+// What to track. Edit this file to change resources or time windows.
+
+// Resource ID -> display name (names from the resource detail API).
+export const RESOURCES: Record<number, string> = {
+  10: "Court #02",
+  11: "Court #03",
+  12: "Court #04",
+  13: "Court #05",
+  262: "Court #07",
+  263: "Court #08",
+  264: "Court #09",
+  265: "Court #10",
+};
+
+export const RESOURCE_IDS = Object.keys(RESOURCES).map(Number);
+
+export const EVENT_TYPE_ID = 157;
+export const ATTENDEES = 2;
+
+// Reservations open up to this many days after today.
+export const DAYS_AHEAD = 6;
+
+// A time window, in 24h "HH:MM". A slot matches only if it lies entirely
+// inside a window (a 20:45-22:00 slot does NOT match a 17:00-21:00 window).
+export interface TimeWindow {
+  start: string;
+  end: string;
+}
+
+const ALL_DAY: TimeWindow[] = [{ start: "10:00", end: "20:30" }];
+const WORK_DAY: TimeWindow[] = [{ start: "16:00", end: "20:30" }];
+
+// Windows per day of week. An empty array means "not interested that day".
+export const WEEKLY_WINDOWS: Record<Weekday, TimeWindow[]> = {
+  sun: ALL_DAY,
+  mon: WORK_DAY,
+  tue: WORK_DAY,
+  wed: WORK_DAY,
+  thu: WORK_DAY,
+  fri: WORK_DAY,
+  sat: ALL_DAY,
+  // Examples:
+  // mon: [{ start: "17:00", end: "22:00" }],
+  // sat: [{ start: "08:00", end: "12:00" }, { start: "15:00", end: "18:00" }],
+};
+
+// Overrides for specific dates ("YYYY-MM-DD"); these replace the weekly windows.
+export const DATE_OVERRIDES: Record<string, TimeWindow[]> = {
+  // "2026-11-26": [{ start: "10:00", end: "14:00" }],
+};
+
+export type Weekday = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
