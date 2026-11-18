@@ -1,8 +1,12 @@
 name: Publish availability
 
 on:
+  # Daily at 9:10 AM Seattle time. Cron is UTC, so both offsets are listed
+  # and the "gate" job skips the one that doesn't match the current season.
+  # (GitHub may start scheduled runs late.)
   schedule:
-    - cron: "*/15 * * * *" # GitHub may start scheduled runs late
+    - cron: "10 17 * * *" # 9:10 PST (winter)
+    - cron: "10 16 * * *" # 9:10 PDT (summer)
   workflow_dispatch:
   push:
     branches: [main]
@@ -21,7 +25,28 @@ env:
   TZ: America/Los_Angeles
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          zone=$(date +%Z) # PST or PDT (TZ is America/Los_Angeles)
+          run=true
+          if [ "$EVENT" = "schedule" ]; then
+            if [ "$zone" = "PST" ] && [ "$SCHEDULE" != "10 17 * * *" ]; then run=false; fi
+            if [ "$zone" = "PDT" ] && [ "$SCHEDULE" != "10 16 * * *" ]; then run=false; fi
+          fi
+          echo "zone=$zone schedule='$SCHEDULE' run=$run"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
   build-and-deploy:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
