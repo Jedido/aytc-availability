@@ -39,14 +39,6 @@ export const WEEKLY_WINDOWS: Record<Weekday, TimeWindow[]> = {
   thu: WORK_DAY,
   fri: WORK_DAY,
   sat: ALL_DAY,
-  // Examples:
-  // mon: [{ start: "17:00", end: "22:00" }],
-  // sat: [{ start: "08:00", end: "12:00" }, { start: "15:00", end: "18:00" }],
-};
-
-// Overrides for specific dates ("YYYY-MM-DD"); these replace the weekly windows.
-export const DATE_OVERRIDES: Record<string, TimeWindow[]> = {
-  // "2026-11-26": [{ start: "10:00", end: "14:00" }],
 };
 
 export type Weekday = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";

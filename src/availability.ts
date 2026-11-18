@@ -1,7 +1,6 @@
 import { fetchAvailability } from "./api.ts";
 import {
   ATTENDEES,
-  DATE_OVERRIDES,
   DAYS_AHEAD,
   EVENT_TYPE_ID,
   RESOURCE_IDS,
@@ -42,7 +41,7 @@ function weekdayOf(date: string): Weekday {
 }
 
 export function windowsFor(date: string): TimeWindow[] {
-  return DATE_OVERRIDES[date] ?? WEEKLY_WINDOWS[weekdayOf(date)];
+  return WEEKLY_WINDOWS[weekdayOf(date)];
 }
 
 // "HH:MM" and "HH:MM:SS" compare correctly as strings once cut to 5 chars.

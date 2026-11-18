@@ -8,9 +8,6 @@ export interface TimeSlot {
   is_cross_day: boolean;
 }
 
-// Day status codes, inferred from observed responses (not documented):
-//   0 = has open slots, 4 = fully booked, 5 = past,
-//   7 = today (no bookable slots), 8 = beyond the booking window
 export interface DailyDetail {
   date: string; // "YYYY-MM-DD"
   status: number;
