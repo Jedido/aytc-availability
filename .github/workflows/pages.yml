@@ -7,9 +7,7 @@ on:
   schedule:
     - cron: "10 17 * * *" # 9:10 PST (winter)
     - cron: "10 16 * * *" # 9:10 PDT (summer)
-  workflow_dispatch:
-  push:
-    branches: [main]
+  workflow_dispatch: # manual "Run workflow" button
 
 permissions:
   contents: read
