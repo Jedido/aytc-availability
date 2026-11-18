@@ -1,16 +1,9 @@
 name: Publish availability
 
 on:
-  # Daily at 9:10 AM and 3:00 PM Seattle time. Cron is UTC, so each time is
-  # listed for both offsets and the "gate" job skips the ones that don't match
-  # the current season; keep its lists in sync with these lines.
-  # (GitHub may start scheduled runs late.)
-  schedule:
-    - cron: "10 17 * * *" # 9:10 AM PST (winter)
-    - cron: "10 16 * * *" # 9:10 AM PDT (summer)
-    - cron: "0 23 * * *" # 3:00 PM PST (winter)
-    - cron: "0 22 * * *" # 3:00 PM PDT (summer)
-  workflow_dispatch: # manual "Run workflow" button
+  # Started by a Google Cloud Scheduler job through the GitHub API (GitHub's own
+  # cron ran too late), or by hand with the "Run workflow" button.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,32 +19,7 @@ env:
   TZ: America/Los_Angeles
 
 jobs:
-  gate:
-    runs-on: ubuntu-latest
-    outputs:
-      run: ${{ steps.check.outputs.run }}
-    steps:
-      - id: check
-        env:
-          EVENT: ${{ github.event_name }}
-          SCHEDULE: ${{ github.event.schedule }}
-        run: |
-          zone=$(date +%Z) # PST or PDT (TZ is America/Los_Angeles)
-          run=true
-          if [ "$EVENT" = "schedule" ]; then
-            case "$SCHEDULE" in
-              "10 17 * * *"|"0 23 * * *") season=PST ;;
-              "10 16 * * *"|"0 22 * * *") season=PDT ;;
-              *) season=unknown ;;
-            esac
-            [ "$zone" = "$season" ] || run=false
-          fi
-          echo "zone=$zone schedule='$SCHEDULE' run=$run"
-          echo "run=$run" >> "$GITHUB_OUTPUT"
-
   build-and-deploy:
-    needs: gate
-    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -66,7 +34,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
         env:
-          # Yesterday's results, to work out which openings are new.
+          # The previous run's results, to work out which openings are new.
           PREVIOUS_JSON: https://jedido.github.io/aytc-availability/availability.json
       - uses: actions/upload-pages-artifact@v3
         with:
