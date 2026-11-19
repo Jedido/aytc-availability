@@ -48,5 +48,5 @@ jobs:
         run: |
           if [ -z "$NTFY_TOPIC" ]; then echo "NTFY_TOPIC not set; skipping"; exit 0; fi
           if [ ! -f notification.json ]; then echo "No new openings; skipping"; exit 0; fi
-          curl -sS -H "Title: $(jq -r .title notification.json)" -H "Tags: tennis" -H "Click: $PAGE_URL" \
+          curl -sS -H "Title: $(jq -r .title notification.json)" -H "Tags: tennis" -H "Priority: 5" -H "Click: $PAGE_URL" \
             --data-binary "$(jq -r .body notification.json)" "https://ntfy.sh/$NTFY_TOPIC"
