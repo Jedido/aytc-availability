@@ -216,7 +216,7 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AYTC Court Availability</title>
   <style>
-    :root { color-scheme: light dark; --fg: #1a1a1a; --muted: #666; --line: #ddd; --bg: #fff; --link: #0b62c4; --new: #1e9e4a; --error: #c0392b; --heat-1: #dbe9fa; --heat-2: #9cc4f1; --heat-3: #2f7fd8; }
+    :root { color-scheme: light dark; --fg: #1a1a1a; --muted: #666; --line: #ddd; --bg: #fff; --link: #0b62c4; --new: #1e9e4a; --error: #c0392b; --heat-1: #dbe9fa; --heat-2: #9cc4f1; --heat-3: #5c9be6; }
     @media (prefers-color-scheme: dark) { :root { --fg: #eee; --muted: #9a9a9a; --line: #333; --bg: #141414; --link: #6aa9ff; --new: #3ccf6e; --error: #ff6b5b; --heat-1: #1c2c42; --heat-2: #24497a; --heat-3: #2f74c8; } }
     body { margin: 0 auto; max-width: 640px; padding: 16px; font: 16px/1.45 system-ui, sans-serif; color: var(--fg); background: var(--bg); }
     footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -236,7 +236,7 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
     button.cell { cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .heat1 { background: var(--heat-1); }
     .heat2 { background: var(--heat-2); }
-    .heat3 { background: var(--heat-3); color: #fff; }
+    .heat3 { background: var(--heat-3); }
     .cell.new::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--new); }
     /* Bottom sheet: pinned to the bottom edge, full width up to the page width. */
     .sheet { position: fixed; inset: auto 0 0 0; margin: 0 auto; width: 100%; max-width: 640px; height: auto; max-height: 80vh; overflow-y: auto; box-sizing: border-box; border: 0; border-radius: 16px 16px 0 0; padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); background: var(--bg); color: var(--fg); box-shadow: 0 -6px 30px rgba(0, 0, 0, .3); }
