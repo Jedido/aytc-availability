@@ -29,19 +29,18 @@ export interface TimeWindow {
   end: string;
 }
 
-const ALL_DAY: TimeWindow[] = [{ start: "10:00", end: "20:30" }];
-const WORK_DAY: TimeWindow[] = [{ start: "16:00", end: "20:30" }];
+const WORK_DAY: TimeWindow[] = [{ start: "16:30", end: "20:00" }];
 
 // Windows per day of week: the page shows every open slot, but notifications only
 // cover slots inside these windows. An empty array means "don't notify that day".
 export const WEEKLY_WINDOWS: Record<Weekday, TimeWindow[]> = {
-  sun: ALL_DAY,
-  mon: WORK_DAY,
+  sun: [{ start: "10:00", end: "17:00" }],
+  mon: [{ start: "18:30", end: "20:00" }],
   tue: WORK_DAY,
-  wed: WORK_DAY,
+  wed: [{ start: "17:30", end: "20:00" }],
   thu: WORK_DAY,
   fri: WORK_DAY,
-  sat: ALL_DAY,
+  sat: [{ start: "10:00", end: "20:30" }],
 };
 
 export type Weekday = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
