@@ -6,8 +6,10 @@
     "start": "node src/index.ts",
     "dev": "node --watch src/index.ts",
     "typecheck": "tsc",
-    "build": "node src/build.ts",
-    "build:mock": "node scripts/mock-build.ts"
+    "build": "node --env-file-if-exists=.env src/build.ts",
+    "build:mock": "node scripts/mock-build.ts",
+    "calendar:auth": "node --env-file-if-exists=.env scripts/google-auth.ts",
+    "calendar:check": "node --env-file-if-exists=.env scripts/google-auth.ts --check"
   },
   "keywords": [],
   "author": "",

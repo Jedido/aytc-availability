@@ -109,6 +109,16 @@ async function writeResponses(withFailures: boolean) {
 const build = (previous: string) =>
   execFileSync(process.execPath, ["src/build.ts"], { stdio: "inherit", env: { ...process.env, MOCK_API: DIR, PREVIOUS_JSON: previous } });
 
+// Calendar busy times (src/calendar.ts reads mock/busy.json under MOCK_API): an evening
+// event on each of the two newest days, where most openings are.
+const at = (date: string, hour: number) => {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(y, m - 1, d, hour).toISOString();
+};
+const busy = dates.slice(-2).map((date) => ({ start: at(date, 18), end: at(date, 19) }));
+await mkdir(DIR, { recursive: true });
+await writeFile(`${DIR}/busy.json`, JSON.stringify(busy, null, 2) + "\n");
+
 // Run 1: no previous run, so nothing is "new" yet.
 await writeResponses(false);
 build("");

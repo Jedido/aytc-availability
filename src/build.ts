@@ -1,7 +1,8 @@
 // Generates the static site in dist/ (index.html and availability.json), and
 // notification.json listing openings that weren't in the previous run's availability.json.
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { getAvailability } from "./availability.ts";
+import { getAvailability, lastBookableDate } from "./availability.ts";
+import { getBusy, type Busy } from "./calendar.ts";
 import { RESOURCE_IDS } from "./config.ts";
 import { formatNotification, newSlots, uniqueSlots } from "./notify.ts";
 import { collectAvailability, renderHtml, toJson, type AvailabilityJson } from "./render.ts";
@@ -25,8 +26,24 @@ async function loadPrevious(source: string | undefined): Promise<AvailabilityJso
   }
 }
 
+// Calendar busy times over the days being checked, with a day's margin on each end.
+// Workflow logs are public, so only the count is logged, never the times.
+async function loadBusy(now: Date): Promise<Busy[]> {
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const [y, m, d] = lastBookableDate(now).split("-").map(Number);
+  const to = new Date(y, m - 1, d + 2);
+  try {
+    const busy = await getBusy(from, to);
+    console.log(`${busy.length} busy calendar ranges.`);
+    return busy;
+  } catch (err) {
+    console.warn(`Calendar lookup failed (${(err as Error).message}); using the plain time windows.`);
+    return [];
+  }
+}
+
 const generatedAt = new Date();
-const report = await getAvailability(generatedAt);
+const report = await getAvailability(generatedAt, await loadBusy(generatedAt));
 
 for (const e of report.errors) console.error(`resource ${e.resourceId} failed: ${e.message}`);
 if (report.errors.length === RESOURCE_IDS.length) {

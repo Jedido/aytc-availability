@@ -3,3 +3,4 @@ dist/
 notification.json
 mock/
 fixtures/
+.env

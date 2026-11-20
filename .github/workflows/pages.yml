@@ -36,6 +36,11 @@ jobs:
         env:
           # The previous run's results, to work out which openings are new.
           PREVIOUS_JSON: https://jedido.github.io/aytc-availability/availability.json
+          # Google Calendar busy times, cut out of the watched windows (src/calendar.ts).
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_CALENDAR_IDS: ${{ secrets.GOOGLE_CALENDAR_IDS }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
