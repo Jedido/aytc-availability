@@ -33,11 +33,12 @@ const WORK_DAY: TimeWindow[] = [{ start: "16:30", end: "20:00" }];
 
 // Windows per day of week: the page shows every open slot, but notifications only
 // cover slots inside these windows. An empty array means "don't notify that day".
+// Google Calendar busy times (src/calendar.ts) are cut out of these windows.
 export const WEEKLY_WINDOWS: Record<Weekday, TimeWindow[]> = {
   sun: [{ start: "10:00", end: "17:00" }],
-  mon: [{ start: "18:30", end: "20:00" }],
+  mon: WORK_DAY,
   tue: WORK_DAY,
-  wed: [{ start: "17:30", end: "20:00" }],
+  wed: WORK_DAY,
   thu: WORK_DAY,
   fri: WORK_DAY,
   sat: [{ start: "10:00", end: "20:30" }],
