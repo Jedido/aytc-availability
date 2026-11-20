@@ -124,16 +124,17 @@ function fixedLength(openings: Opening[]): number | null {
 }
 
 // Openings bucketed by day and exact start time, for the grid. The two court groups run
-// staggered schedules, so each start time gets its own row.
+// staggered schedules, so each start time gets its own row. Rows cover every start time
+// the courts offer (allStarts), so a fully booked time stays as a row of empty cells.
 const cellKey = (date: string, start: string) => `${date}|${start}`;
-function buildGrid(openings: Opening[]): { starts: string[]; cells: Map<string, Opening[]> } {
+function buildGrid(openings: Opening[], allStarts: string[]): { starts: string[]; cells: Map<string, Opening[]> } {
   const cells = new Map<string, Opening[]>();
   for (const o of openings) {
     const key = cellKey(o.date, o.start);
     if (!cells.has(key)) cells.set(key, []);
     cells.get(key)!.push(o);
   }
-  return { starts: [...new Set(openings.map((o) => o.start))].sort(), cells };
+  return { starts: [...new Set([...allStarts, ...openings.map((o) => o.start)])].sort(), cells };
 }
 
 // Shade level for a cell by how many courts are open at that time (at most 4 share a start time).
@@ -147,6 +148,9 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
   const fresh = (o: Opening) => isNew(o, data.generatedAt);
   const times = new Set(data.openings.map(slotKey)).size;
   const newTimes = new Set(data.openings.filter(fresh).map(slotKey)).size;
+  // Watched slots (inside the windows, clear of calendar events) are shown as "prime time",
+  // without saying why.
+  const primeTimes = new Set(data.openings.filter((o) => o.watched).map(slotKey)).size;
 
   // With one fixed slot length, a start time says it all; otherwise show the range.
   const length = fixedLength(data.openings);
@@ -164,7 +168,7 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
   // Grid: days across, start times down. Each non-empty cell is a button that opens its own
   // popover, styled as a bottom sheet. Popovers need no script: the browser opens them and
   // closes them on Esc or a tap outside.
-  const { starts, cells } = buildGrid(data.openings);
+  const { starts, cells } = buildGrid(data.openings, report.starts);
   const dayHead = report.days
     .map((day) => {
       const [weekday, monthDay] = dayHeading(day.date, "short").split(", ");
@@ -180,12 +184,13 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
         const o = slots[0];
         const courts = slots.length;
         const id = `slot-${day.date}-${start.replace(":", "")}`;
-        const cls = ["cell", `heat${heatLevel(courts)}`, slots.some(fresh) && "new"].filter(Boolean).join(" ");
-        const label = `${dayHeading(day.date)}, ${timeText(o)}: ${plural(courts, "court")} open`;
+        const prime = slots.some((s) => s.watched);
+        const cls = ["cell", `heat${heatLevel(courts)}`, slots.some(fresh) && "new", prime && "prime"].filter(Boolean).join(" ");
+        const label = `${dayHeading(day.date)}, ${timeText(o)}: ${plural(courts, "court")} open${prime ? ", prime time" : ""}`;
         // The sheet always shows the full range, since that's where you decide to book.
         sheets.push(`
   <div class="sheet" id="${id}" popover>
-    <div class="sheet-head"><h2>${escapeHtml(dayHeading(day.date))} · ${clockRange(o.start, o.end)}</h2><button type="button" class="close" popovertarget="${id}" popovertargetaction="hide" aria-label="Close">✕</button></div>
+    <div class="sheet-head"><h2>${escapeHtml(dayHeading(day.date))} · ${clockRange(o.start, o.end)}${prime ? ` <small class="prime-tag">prime time</small>` : ""}</h2><button type="button" class="close" popovertarget="${id}" popovertargetaction="hide" aria-label="Close">✕</button></div>
     ${courtLinks(slots)}
   </div>`);
         return `<button type="button" class="${cls}" popovertarget="${id}" data-date="${day.date}" data-start="${start}" data-count="${courts}" aria-label="${escapeHtml(label)}">${courts}</button>`;
@@ -216,8 +221,8 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AYTC Court Availability</title>
   <style>
-    :root { color-scheme: light dark; --fg: #1a1a1a; --muted: #666; --line: #ddd; --bg: #fff; --link: #0b62c4; --new: #1e9e4a; --error: #c0392b; --heat-1: #dbe9fa; --heat-2: #9cc4f1; --heat-3: #5c9be6; }
-    @media (prefers-color-scheme: dark) { :root { --fg: #eee; --muted: #9a9a9a; --line: #333; --bg: #141414; --link: #6aa9ff; --new: #3ccf6e; --error: #ff6b5b; --heat-1: #1c2c42; --heat-2: #24497a; --heat-3: #2f74c8; } }
+    :root { color-scheme: light dark; --fg: #1a1a1a; --muted: #666; --line: #ddd; --bg: #fff; --link: #0b62c4; --new: #e8590c; --error: #c0392b; --prime: #0b4fa8; --heat-1: #dbe9fa; --heat-2: #9cc4f1; --heat-3: #5c9be6; }
+    @media (prefers-color-scheme: dark) { :root { --fg: #eee; --muted: #9a9a9a; --line: #333; --bg: #141414; --link: #6aa9ff; --new: #ff8a3d; --error: #ff6b5b; --prime: #9cc8ff; --heat-1: #1c2c42; --heat-2: #24497a; --heat-3: #2f74c8; } }
     body { margin: 0 auto; max-width: 640px; padding: 16px; font: 16px/1.45 system-ui, sans-serif; color: var(--fg); background: var(--bg); }
     footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
     footer h1 { font-size: .85rem; font-weight: 600; color: var(--fg); letter-spacing: .02em; margin: 0 0 2px; }
@@ -237,7 +242,13 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
     .heat1 { background: var(--heat-1); }
     .heat2 { background: var(--heat-2); }
     .heat3 { background: var(--heat-3); }
-    .cell.new::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--new); }
+    /* Double ring: two 1px lines in --prime with a 1px gap in the page color. A dark blue
+       (light blue in dark mode) so it stands apart from the blue cell shading. */
+    .cell.prime, .key-prime { box-shadow: inset 0 0 0 1px var(--prime), inset 0 0 0 2px var(--bg), inset 0 0 0 3px var(--prime); }
+    .key-prime { border-radius: 4px; padding: 0 5px; color: var(--fg); }
+    .prime-tag { font-size: .7rem; font-weight: 600; color: var(--prime); text-transform: uppercase; letter-spacing: .04em; margin-left: 4px; }
+    /* The halo in the page color keeps the dot distinct from the prime-time ring. */
+    .cell.new::after { content: ""; position: absolute; top: 3px; right: 3px; width: 9px; height: 9px; border-radius: 50%; background: var(--new); box-shadow: 0 0 0 2px var(--bg); }
     /* Bottom sheet: pinned to the bottom edge, full width up to the page width. */
     .sheet { position: fixed; inset: auto 0 0 0; margin: 0 auto; width: 100%; max-width: 640px; height: auto; max-height: 80vh; overflow-y: auto; box-sizing: border-box; border: 0; border-radius: 16px 16px 0 0; padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); background: var(--bg); color: var(--fg); box-shadow: 0 -6px 30px rgba(0, 0, 0, .3); }
     .sheet::backdrop { background: rgba(0, 0, 0, .4); }
@@ -253,7 +264,7 @@ export function renderHtml(report: AvailabilityReport, data: Availability): stri
   ${grid}
   <footer>
     <h1>AYTC Court Availability</h1>
-    <p id="summary" data-count="${data.openings.length}" data-generated-at="${data.generatedAt}">${times} open time${times === 1 ? "" : "s"} · <span class="key-new">${newTimes} new this hour</span> · updated ${escapeHtml(updated)}</p>${errors}
+    <p id="summary" data-count="${data.openings.length}" data-generated-at="${data.generatedAt}">${times} open time${times === 1 ? "" : "s"} · <span class="key-new">${newTimes} new this hour</span> · <span class="key-prime">${primeTimes} prime time${primeTimes === 1 ? "" : "s"}</span> · updated ${escapeHtml(updated)}</p>${errors}
   </footer>
 </body>
 </html>
